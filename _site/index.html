@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+<meta charset="utf-8" />
+<meta name="generator" content="pandoc" />
+<meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
+
+
+
+
+<title>Handling missing data</title>
+
+<script src="site_libs/header-attrs-2.23/header-attrs.js"></script>
+<script src="site_libs/jquery-3.6.0/jquery-3.6.0.min.js"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<link href="site_libs/bootstrap-3.3.5/css/bootstrap.min.css" rel="stylesheet" />
+<script src="site_libs/bootstrap-3.3.5/js/bootstrap.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/html5shiv.min.js"></script>
+<script src="site_libs/bootstrap-3.3.5/shim/respond.min.js"></script>
+<style>h1 {font-size: 34px;}
+       h1.title {font-size: 38px;}
+       h2 {font-size: 30px;}
+       h3 {font-size: 24px;}
+       h4 {font-size: 18px;}
+       h5 {font-size: 16px;}
+       h6 {font-size: 12px;}
+       code {color: inherit; background-color: rgba(0, 0, 0, 0.04);}
+       pre:not([class]) { background-color: white }</style>
+<script src="site_libs/navigation-1.1/tabsets.js"></script>
+<link href="site_libs/highlightjs-9.12.0/default.css" rel="stylesheet" />
+<script src="site_libs/highlightjs-9.12.0/highlight.js"></script>
+
+<style type="text/css">
+  code{white-space: pre-wrap;}
+  span.smallcaps{font-variant: small-caps;}
+  span.underline{text-decoration: underline;}
+  div.column{display: inline-block; vertical-align: top; width: 50%;}
+  div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+  ul.task-list{list-style: none;}
+    </style>
+
+<style type="text/css">code{white-space: pre;}</style>
+<script type="text/javascript">
+if (window.hljs) {
+  hljs.configure({languages: []});
+  hljs.initHighlightingOnLoad();
+  if (document.readyState && document.readyState === "complete") {
+    window.setTimeout(function() { hljs.initHighlighting(); }, 0);
+  }
+}
+</script>
+
+
+
+
+
+
+
+
+
+<style type = "text/css">
+.main-container {
+  max-width: 940px;
+  margin-left: auto;
+  margin-right: auto;
+}
+img {
+  max-width:100%;
+}
+.tabbed-pane {
+  padding-top: 12px;
+}
+.html-widget {
+  margin-bottom: 20px;
+}
+button.code-folding-btn:focus {
+  outline: none;
+}
+summary {
+  display: list-item;
+}
+details > summary > p:only-child {
+  display: inline;
+}
+pre code {
+  padding: 0;
+}
+</style>
+
+
+<style type="text/css">
+.dropdown-submenu {
+  position: relative;
+}
+.dropdown-submenu>.dropdown-menu {
+  top: 0;
+  left: 100%;
+  margin-top: -6px;
+  margin-left: -1px;
+  border-radius: 0 6px 6px 6px;
+}
+.dropdown-submenu:hover>.dropdown-menu {
+  display: block;
+}
+.dropdown-submenu>a:after {
+  display: block;
+  content: " ";
+  float: right;
+  width: 0;
+  height: 0;
+  border-color: transparent;
+  border-style: solid;
+  border-width: 5px 0 5px 5px;
+  border-left-color: #cccccc;
+  margin-top: 5px;
+  margin-right: -10px;
+}
+.dropdown-submenu:hover>a:after {
+  border-left-color: #adb5bd;
+}
+.dropdown-submenu.pull-left {
+  float: none;
+}
+.dropdown-submenu.pull-left>.dropdown-menu {
+  left: -100%;
+  margin-left: 10px;
+  border-radius: 6px 0 6px 6px;
+}
+</style>
+
+<script type="text/javascript">
+// manage active state of menu based on current page
+$(document).ready(function () {
+  // active menu anchor
+  href = window.location.pathname
+  href = href.substr(href.lastIndexOf('/') + 1)
+  if (href === "")
+    href = "index.html";
+  var menuAnchor = $('a[href="' + href + '"]');
+
+  // mark the anchor link active (and if it's in a dropdown, also mark that active)
+  var dropdown = menuAnchor.closest('li.dropdown');
+  if (window.bootstrap) { // Bootstrap 4+
+    menuAnchor.addClass('active');
+    dropdown.find('> .dropdown-toggle').addClass('active');
+  } else { // Bootstrap 3
+    menuAnchor.parent().addClass('active');
+    dropdown.addClass('active');
+  }
+
+  // Navbar adjustments
+  var navHeight = $(".navbar").first().height() + 15;
+  var style = document.createElement('style');
+  var pt = "padding-top: " + navHeight + "px; ";
+  var mt = "margin-top: -" + navHeight + "px; ";
+  var css = "";
+  // offset scroll position for anchor links (for fixed navbar)
+  for (var i = 1; i <= 6; i++) {
+    css += ".section h" + i + "{ " + pt + mt + "}\n";
+  }
+  style.innerHTML = "body {" + pt + "padding-bottom: 40px; }\n" + css;
+  document.head.appendChild(style);
+});
+</script>
+
+<!-- tabsets -->
+
+<style type="text/css">
+.tabset-dropdown > .nav-tabs {
+  display: inline-table;
+  max-height: 500px;
+  min-height: 44px;
+  overflow-y: auto;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+}
+
+.tabset-dropdown > .nav-tabs > li.active:before, .tabset-dropdown > .nav-tabs.nav-tabs-open:before {
+  content: "\e259";
+  font-family: 'Glyphicons Halflings';
+  display: inline-block;
+  padding: 10px;
+  border-right: 1px solid #ddd;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li.active:before {
+  content: "\e258";
+  font-family: 'Glyphicons Halflings';
+  border: none;
+}
+
+.tabset-dropdown > .nav-tabs > li.active {
+  display: block;
+}
+
+.tabset-dropdown > .nav-tabs > li > a,
+.tabset-dropdown > .nav-tabs > li > a:focus,
+.tabset-dropdown > .nav-tabs > li > a:hover {
+  border: none;
+  display: inline-block;
+  border-radius: 4px;
+  background-color: transparent;
+}
+
+.tabset-dropdown > .nav-tabs.nav-tabs-open > li {
+  display: block;
+  float: none;
+}
+
+.tabset-dropdown > .nav-tabs > li {
+  display: none;
+}
+</style>
+
+<!-- code folding -->
+
+
+
+
+</head>
+
+<body>
+
+
+<div class="container-fluid main-container">
+
+
+
+
+<div class="navbar navbar-default  navbar-fixed-top" role="navigation">
+  <div class="container">
+    <div class="navbar-header">
+      <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-bs-toggle="collapse" data-target="#navbar" data-bs-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+      <a class="navbar-brand" href="index.html">A short course on dealing with missing data</a>
+    </div>
+    <div id="navbar" class="navbar-collapse collapse">
+      <ul class="nav navbar-nav">
+        <li>
+  <a href="index.html">Home</a>
+</li>
+<li>
+  <a href="about.html">About</a>
+</li>
+      </ul>
+      <ul class="nav navbar-nav navbar-right">
+        
+      </ul>
+    </div><!--/.nav-collapse -->
+  </div><!--/.container -->
+</div><!--/.navbar -->
+
+<div id="header">
+
+
+
+<h1 class="title toc-ignore">Handling missing data</h1>
+
+</div>
+
+
+<p><img src="img/deerstalker.png" alt="Deerstalker" />.</p>
+<div
+id="missing-data-or-sherlock-holmes-and-the-case-of-the-missing-data"
+class="section level1">
+<h1><U>Missing data (or “Sherlock Holmes and the case of the Missing
+Data”)</U></h1>
+<div id="the-nature-and-classification-of-missing-data"
+class="section level2">
+<h2>The nature and classification of missing data</h2>
+<div id="mcar---missing-completely-at-random" class="section level3">
+<h3>MCAR - Missing Completely at random</h3>
+<p>Any variable or observation thereof is equally likely to be
+missing.<br />
+The effect is to reduce the sample size but it does not introduce any
+bias.</p>
+</div>
+<div id="mar---missing-at-random" class="section level3">
+<h3>MAR - Missing at random</h3>
+<p>Here the probability of a value being missing is dependant on this
+variable or another in the data-set.</p>
+</div>
+<div id="mnar---missing-not-at-random." class="section level3">
+<h3>MNAR - Missing not at random.</h3>
+<p>In this scenario the proability of a value being missing differs for
+different values of the same variable and we have no understanding of
+what is causing this.</p>
+<HR>
+</div>
+</div>
+<div id="getting-some-example-data-to-work-with."
+class="section level2">
+<h2>Getting some example data to work with.</h2>
+<p>We will use the portal data-set as used in the “Introduction to R”
+course. Create a new project in Rstudio.<br />
+Let’s download the data (ensure that you have a data sub-directory in
+your projects working directory):</p>
+<pre class="r"><code>download.file(url=&quot;https://ndownloader.figshare.com/files/2292169&quot;,
+              destfile = &quot;data/portal_data_joined.csv&quot;)</code></pre>
+<p>Install our packages:<br />
+Before using a package for the first time you will need to install it on
+your machine, and then you should import it in every subsequent R
+session when you need it. To install a package in R on your machine you
+need to use the <code>install.packages</code> function. To install the
+<code>tidyverse</code> package type the following straight into the
+console:</p>
+<pre class="r"><code>#install the tidyverse package
+install.packages(&quot;tidyverse&quot;)</code></pre>
+<p>It is better to install packages straight from the console then from
+your script as there’s no need to re-install packages every time you run
+the script.</p>
+<p>Then, to load the package type:</p>
+<pre class="r"><code>## load the tidyverse package
+library(tidyverse)</code></pre>
+<pre><code>## ── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
+## ✔ dplyr     1.1.2     ✔ readr     2.1.4
+## ✔ forcats   1.0.0     ✔ stringr   1.5.0
+## ✔ ggplot2   3.4.2     ✔ tibble    3.2.1
+## ✔ lubridate 1.9.2     ✔ tidyr     1.3.0
+## ✔ purrr     1.0.1     
+## ── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+## ✖ dplyr::filter() masks stats::filter()
+## ✖ dplyr::lag()    masks stats::lag()
+## ℹ Use the conflicted package (&lt;http://conflicted.r-lib.org/&gt;) to force all conflicts to become errors</code></pre>
+<p>Now let’s load the data into an R tibble using ‘readr’:</p>
+<pre class="r"><code>surveys &lt;- read_csv(&quot;data/portal_data_joined.csv&quot;)</code></pre>
+</div>
+<div id="finding-missing-data-or-rather-detecting-it."
+class="section level2">
+<h2>Finding missing data (or rather detecting it).</h2>
+<p>As a starting point, <em>summary()</em> will list the number of any
+NAs present in the data-set or in a specific column.</p>
+<pre class="r"><code>colnames(surveys) # get a list of the variables/columns</code></pre>
+<pre><code>##  [1] &quot;record_id&quot;       &quot;month&quot;           &quot;day&quot;             &quot;year&quot;           
+##  [5] &quot;plot_id&quot;         &quot;species_id&quot;      &quot;sex&quot;             &quot;hindfoot_length&quot;
+##  [9] &quot;weight&quot;          &quot;genus&quot;           &quot;species&quot;         &quot;taxa&quot;           
+## [13] &quot;plot_type&quot;</code></pre>
+<pre class="r"><code>summary(surveys$sex) # Note no NAs as sexes are &quot;&quot;,&quot;M&quot; or &quot;F&quot;</code></pre>
+<pre><code>##    Length     Class      Mode 
+##     34786 character character</code></pre>
+<pre class="r"><code>summary(surveys$hindfoot_length) # summary stats incl. no. of NAs</code></pre>
+<pre><code>##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA&#39;s 
+##    2.00   21.00   32.00   29.29   36.00   70.00    3348</code></pre>
+<pre class="r"><code>summary(surveys$weight)</code></pre>
+<pre><code>##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA&#39;s 
+##    4.00   20.00   37.00   42.67   48.00  280.00    2503</code></pre>
+<p>We could try the is.na() to flag the NAs (TRUE).</p>
+<pre class="r"><code>is.na(surveys$hindfoot_length)</code></pre>
+<p>That sort of works but the problem is that we are dealing with 1000s
+of rows of data.<br />
+Maybe we can try <em>which(is.na())</em> to list out the rows that
+contain NAs.</p>
+<pre class="r"><code>which(is.na(surveys$hindfoot_length))</code></pre>
+<p>Well that is a bit better but we still have about 3000 rows to
+examine/list.<br />
+Indeed we can obtain this number (i.e. another way to count NAs like
+summary() did.) using <em>sum(is.na())</em> to find the number of NAs
+(Remember TRUE has a value of 1 so we can count by summing the logical
+vector).</p>
+<pre class="r"><code>sum(is.na(surveys$hindfoot_length))</code></pre>
+<pre><code>## [1] 3348</code></pre>
+<p>Lets report this for all columns using <em>colSums()</em> to get the
+number of NAs for each.</p>
+<pre class="r"><code>colSums(is.na(surveys))</code></pre>
+<pre><code>##       record_id           month             day            year         plot_id 
+##               0               0               0               0               0 
+##      species_id             sex hindfoot_length          weight           genus 
+##               0            1748            3348            2503               0 
+##         species            taxa       plot_type 
+##               0               0               0</code></pre>
+</div>
+</div>
+<div
+id="filter-out-those-records-that-have-missing-values-somewhere-with---filtercomplete.cases.."
+class="section level1">
+<h1>filter out those records that have missing values somewhere with -
+filter(!complete.cases(.)).</h1>
+<pre class="r"><code>md_rows &lt;- surveys %&gt;%
+  filter(!complete.cases(.))
+View(md_rows)</code></pre>
+<p>We can now scroll around the data and see that each of the returned
+rows have NAs in one or more (likely different) columns. This still
+isn’t idea as due to the sheer number we have to scroll around quite a
+bit to get the scale of the problem.</p>
+<p>For BIG data-sets we need tools e.g. the <strong>mice</strong>
+package (mice: Multivariate Imputation by Chained Equations) <img
+src="img/mice.png" alt="mice" />.</p>
+<pre class="r"><code>install.packages(&quot;mice&quot;)</code></pre>
+<pre class="r"><code>library(mice)</code></pre>
+<pre><code>## 
+## Attaching package: &#39;mice&#39;</code></pre>
+<pre><code>## The following object is masked from &#39;package:stats&#39;:
+## 
+##     filter</code></pre>
+<pre><code>## The following objects are masked from &#39;package:base&#39;:
+## 
+##     cbind, rbind</code></pre>
+<pre class="r"><code>md.pattern(surveys)</code></pre>
+<p><img src="index_files/figure-html/unnamed-chunk-12-1.png" width="672" /></p>
+<pre><code>##       record_id month day year plot_id species_id genus species taxa plot_type
+## 30676         1     1   1    1       1          1     1       1    1         1
+## 1506          1     1   1    1       1          1     1       1    1         1
+## 694           1     1   1    1       1          1     1       1    1         1
+## 162           1     1   1    1       1          1     1       1    1         1
+## 62            1     1   1    1       1          1     1       1    1         1
+## 39            1     1   1    1       1          1     1       1    1         1
+## 6             1     1   1    1       1          1     1       1    1         1
+## 1641          1     1   1    1       1          1     1       1    1         1
+##               0     0   0    0       0          0     0       0    0         0
+##        sex weight hindfoot_length     
+## 30676    1      1               1    0
+## 1506     1      1               0    1
+## 694      1      0               1    1
+## 162      1      0               0    2
+## 62       0      1               1    1
+## 39       0      1               0    2
+## 6        0      0               1    2
+## 1641     0      0               0    3
+##       1748   2503            3348 7599</code></pre>
+<p>This gives an idication of how much data is missing and where it is
+missing.</p>
+<ol style="list-style-type: decimal">
+<li>drop.na() across the data removes ALL records with any missing data
+= power reduction due to reduced sample size.<br />
+</li>
+<li>drop.na() applied to a particular column to keep known values in
+other columns.<br />
+mutate(COLUMN = replace_na(COLUMN,NEW-VALUE)) e.g. to replace NA with
+“Unknown” (or can use na_if() with mutate to do the reverse).<br />
+
+<HR></li>
+</ol>
+<div
+id="strategies-for-dealing-with-missing-data-and-their-consequences."
+class="section level2">
+<h2>Strategies for dealing with missing data (and their
+consequences).</h2>
+<div id="remove-it-it-didnt-happen" class="section level3">
+<h3>Remove it (It didn’t happen)</h3>
+<p>na.omit() na.exclude() na.rm = TRUE in functions like mean() &amp;
+median()<br />
+This has the advantage of being simple to do but has an adverse effect
+on the power of the model by reducing the sample size.<br />
+A special case is <em>pairwise deletion</em> where we analyse all the
+cases where data is present. This comes with the downside of having
+different sample sizes for the different variables.</p>
+</div>
+<div id="replace-with-average-imputation" class="section level3">
+<h3>Replace with average (Imputation)</h3>
+<p>One example is a <em>general replacement</em> where all missing
+values are replaced with an average value (Mean, median or mode).<br />
+This should tend not to distort the rest of the data but does not allow
+for the true value at that point and may distort any modelled line. We
+also risk introducing bias and whilst the data mean will remain
+constant, this approach is likely to reduce the variance.<br />
+<em>Similar case imputation</em> happens when there are 2 (or more)
+similar sub-populations in the data and we use the average of the
+relevant sub-poulation to replace the missing point(s).</p>
+<p><br />
+### Last known value.</p>
+<p><u>Clip Art attribution:</u><br />
+<strong>Deerstalker</strong> under Creative Commons licence <a
+href="https://commons.wikimedia.org/wiki/File:Emdw_sh_clip_art.png"
+class="uri">https://commons.wikimedia.org/wiki/File:Emdw_sh_clip_art.png</a><br />
+<strong>Mouse</strong> under CC licence
+<a href="https://www.vecteezy.com/free-png/nature">Nature PNGs by
+Vecteezy</a></p>
+</div>
+</div>
+</div>
+
+
+
+
+</div>
+
+<script>
+
+// add bootstrap table styles to pandoc tables
+function bootstrapStylePandocTables() {
+  $('tr.odd').parent('tbody').parent('table').addClass('table table-condensed');
+}
+$(document).ready(function () {
+  bootstrapStylePandocTables();
+});
+
+
+</script>
+
+<!-- tabsets -->
+
+<script>
+$(document).ready(function () {
+  window.buildTabsets("TOC");
+});
+
+$(document).ready(function () {
+  $('.tabset-dropdown > .nav-tabs > li').click(function () {
+    $(this).parent().toggleClass('nav-tabs-open');
+  });
+});
+</script>
+
+<!-- code folding -->
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

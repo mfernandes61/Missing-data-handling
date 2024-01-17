@@ -1,0 +1,131 @@
+---
+title: "Handling missing data"
+---
+
+![Deerstalker](img/deerstalker.png).  
+
+# <U>Missing data (or "Sherlock Holmes and the case of the Missing Data")</U>   
+
+## The nature and classification of missing data   
+### MCAR - Missing Completely at random   
+Any variable or observation thereof is equally likely to be missing.   
+The effect is to reduce the sample size but it does not introduce any bias.   
+
+### MAR - Missing at random  
+Here the probability of a value being missing is dependant on this variable or another in the data-set.
+
+### MNAR - Missing not at random.  
+In this scenario the proability of a value being missing differs for different values of the same variable and we have no understanding of what is causing this.   
+
+<HR>
+
+## Getting some example data to work with.  
+We will use the portal data-set as used in the "Introduction to R" course.
+Create a new project in Rstudio.   
+Let's download the data (ensure that you have a data sub-directory in your projects working directory):    
+```{r, eval=FALSE, purl=TRUE}
+download.file(url="https://ndownloader.figshare.com/files/2292169",
+              destfile = "data/portal_data_joined.csv")
+```
+Install our packages:    
+Before using a package for the first time you will need to install it on your machine, and then you should import it in every subsequent R session when you need it. To install a package in R on your machine you need to use the `install.packages` function.  To install the `tidyverse` package type the following straight into the console:  
+```{r, eval=FALSE, purl = FALSE}
+#install the tidyverse package
+install.packages("tidyverse")
+```
+It is better to install packages straight from the console then from your script as there's no need to re-install packages every time you run the script.
+
+Then, to load the package type:
+```{r}
+## load the tidyverse package
+library(tidyverse)
+```
+Before we proceed to the portal data, let use explore the MCAR, MNAR & MAR etc using the missMethods package.    
+
+<hr>
+
+Now let's load the data into an R tibble using 'readr':
+
+```{r, eval=TRUE, message=FALSE}
+surveys <- read_csv("data/portal_data_joined.csv")
+```
+
+## Finding missing data (or rather detecting it).     
+As a starting point, _summary()_ will list the number of any NAs present in the data-set or in a specific column.  
+```{r}
+colnames(surveys) # get a list of the variables/columns
+summary(surveys$sex) # Note no NAs as sexes are "","M" or "F"
+summary(surveys$hindfoot_length) # summary stats incl. no. of NAs
+summary(surveys$weight)
+
+```
+
+We could try the is.na() to flag the NAs (TRUE).  
+```{r, eval=TRUE, results= "hide"}
+is.na(surveys$hindfoot_length)
+```
+That sort of works but the problem is that we are dealing with 1000s of rows of data.   
+Maybe we can try _which(is.na())_ to list out the rows that contain NAs.  
+```{r, eval=TRUE, results= "hide"}
+which(is.na(surveys$hindfoot_length))
+```
+Well that is a bit better but we still have about 3000 rows to examine/list.   
+Indeed we can obtain this number (i.e. another way to count NAs like summary() did.) using _sum(is.na())_ to find the number of NAs (Remember TRUE has a value of 1 so we can count by summing the logical vector). 
+```{r}
+sum(is.na(surveys$hindfoot_length))
+```
+Lets report this for all columns using _colSums()_
+to get the number of NAs for each.   
+```{r}
+colSums(is.na(surveys))
+```
+
+# filter out those records that have missing values somewhere with - filter(!complete.cases(.)).  
+```{r, eval = FALSE}
+md_rows <- surveys %>%
+  filter(!complete.cases(.))
+View(md_rows)
+```
+We can now scroll around the data and see that each of the returned rows have NAs in one or more (likely different) columns. This still isn't idea as due to the sheer number we have to scroll around quite a bit to get the scale of the problem.   
+
+For BIG data-sets we need tools e.g. the __mice__ package (mice: Multivariate Imputation by Chained Equations) ![mice](img/mice.png).  
+```{r, eval = FALSE}
+install.packages("mice")
+```
+
+```{r}
+library(mice)
+md.pattern(surveys)
+```
+This gives an idication of how much data is missing and where it is missing.   
+
+1. drop.na() across the data removes ALL records with any missing data = power reduction due to reduced sample size.   
+2. drop.na() applied to a particular column to keep
+known values in other columns.    
+mutate(COLUMN = replace_na(COLUMN,NEW-VALUE)) e.g. to replace NA with "Unknown" (or can use na_if() with mutate to do the reverse).     
+<HR>
+
+## Strategies for dealing with missing data (and their consequences).   
+### Remove it (It didn't happen)
+na.omit()
+na.exclude()
+na.rm = TRUE in functions like mean() & median()    
+This has the advantage of being simple to do but has an adverse effect on the power of the model by reducing the sample size.     
+A special case is *pairwise deletion* where we analyse all the cases
+where data is present. This comes with the downside of having different 
+sample sizes for the different variables.   
+
+### Replace with average (Imputation)  
+One example is a _general replacement_ where all missing values are 
+replaced with an average value (Mean, median or mode).    
+This should tend not to distort the rest of the data but does not allow for the true value at that point and may distort any modelled line. We also risk introducing bias and whilst the data mean will remain constant, this approach is likely to reduce the variance.    
+_Similar case imputation_ happens when there are 2 (or more) similar sub-populations in the data and we use the average of the relevant sub-poulation to replace the missing point(s).    
+
+\
+### Last known value.   
+
+<u>Clip Art attribution:</u>    
+__Deerstalker__ under Creative Commons licence
+https://commons.wikimedia.org/wiki/File:Emdw_sh_clip_art.png    
+__Mouse__ under CC licence 
+<a href="https://www.vecteezy.com/free-png/nature">Nature PNGs by Vecteezy</a>
